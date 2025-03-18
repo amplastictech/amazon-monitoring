@@ -71,8 +71,9 @@ def check_reviews():
                 review_date_str = date_text.replace("Reviewed in the United States on ", "")
                 review_date = datetime.strptime(review_date_str, "%B %d, %Y")
                 
-                # Check if review is from yesterday or today
-                if review_date.date() >= yesterday.date():
+                # Check if review is from the past 5 days
+                five_days_ago = today - timedelta(days=5)
+                if review_date.date() >= five_days_ago.date():
                     title = review.find('a', {'data-hook': 'review-title'})
                     title_text = title.find('span', recursive=False).text if title else "No title"
                     low_rated_reviews.append({
