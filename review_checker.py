@@ -36,7 +36,7 @@ def check_reviews():
     options = Options()
     options.add_argument("--headless")  # Run without opening a browser window
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36")
-    driver = webdriver.Chrome(service=Service("path/to/chromedriver"), options=options)
+    driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
 
     try:
         driver.get(URL)
