@@ -7,7 +7,10 @@ import time
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
-SMTP_SERVER = "smtp.gmail.com"  # For Gmail; change if using different provider
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
 def send_email(subject, body):
