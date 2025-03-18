@@ -16,9 +16,6 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
 def send_email(subject, body):
-    from email.mime.text import MIMEText
-    import smtplib
-
     msg = MIMEText(body)
     msg['Subject'] = subject
     msg['From'] = EMAIL_SENDER
@@ -48,8 +45,6 @@ def check_reviews():
 
         all_reviews_info = []
         low_rated_reviews = []
-
-        # Debug raw HTML snippets for the first few reviews
         raw_html_snippets = []
 
         for review in reviews:
@@ -63,7 +58,7 @@ def check_reviews():
             title_element = review.select_one('[data-hook="review-title"] span')
             title = title_element.text.strip() if title_element else "No title"
         
-            all_reviews.append({
+            all_reviews_info.append({
                 'stars': stars,
                 'title': title,
                 'date': date_text
@@ -78,27 +73,26 @@ def check_reviews():
                             'title': title,
                             'date': date_text
                         })
-            except ValueError:
-                # If date parsing fails, include debugging info
-                raw_html_snippets.append(f"Failed parsing date: {date_text} - HTML: {str(review)[:500]}")
+                except ValueError:
+                    raw_html_snippets.append(f"Failed parsing date: {date_text} - HTML: {str(review)[:500]}")
 
-            # Capture only first 3 raw snippets
             if len(raw_html_snippets) < 3:
                 raw_html_snippets.append(str(review))
 
+        # Format email body
         email_body = "All reviews found on the page:\n\n"
-        email_body += "\n".join(all_reviews_info)
+        email_body += "\n".join([f"Stars: {r['stars']}, Title: {r['title']}, Date: {r['date']}" for r in all_reviews_info])
         email_body += "\n\n"
 
         if low_rated_reviews:
             email_body += "Low-rated reviews (1, 2, or 3 stars) within the past 5 days:\n\n"
-            email_body += "\n".join(low_rated_reviews)
+            email_body += "\n".join([f"Stars: {r['stars']}, Title: {r['title']}, Date: {r['date']}" for r in low_rated_reviews])
         else:
             email_body += "No 1, 2, or 3-star reviews found in the past 5 days.\n"
 
-        email_body += f"\n\nDebug info: Today = {datetime.now().date()}, Five days ago = {(datetime.now() - timedelta(days=5)).date()}\n"
+        email_body += f"\n\nDebug info: Today = {today.date()}, Five days ago = {five_days_ago.date()}\n"
         email_body += "\n\n--- Raw HTML snippets (first 3 reviews): ---\n\n"
-        email_body += "\n\n".join(raw_html_snippets)
+        email_body += "\n\n".join(raw_html_snippets[:3])
 
         send_email("Amazon Review Check Results with Debug HTML", email_body)
 
