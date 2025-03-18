@@ -53,25 +53,34 @@ def check_reviews():
         raw_html_snippets = []
 
         for review in reviews:
-            # Raw HTML snippet for debugging
-            raw_html_snippets.append(str(review)[:1000])  # limit snippet length
-
-            star_element = review.select_one('[data-hook="review-star-rating"] span')
-            stars_text = star_element.text.strip() if star_element else "Unknown"
+            star_element = review.select_one('[data-hook="review-star-rating"]')
+            stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text if star_element else "Unknown stars"
             stars = float(stars_text.split()[0]) if stars_text != "Unknown stars" else -1
-
+        
             date_element = review.select_one('span[data-hook="review-date"]')
             date_text = date_element.text.replace("Reviewed in the United States on ", "").strip() if date_element else "Unknown date"
-            review_date = datetime.strptime(date_text, "%B %d, %Y") if date_element else None
-
-            title_element = review.select_one('a[data-hook="review-title"] span')
-            title = title_element.text.strip() if (title_element := review.select_one('a[data-hook="review-title"] span')) else "No title"
-
-            all_reviews_info.append(f"{stars} stars - {title} (Date: {date_text})")
-
-            if stars <= 3 and stars != -1 and review_date := datetime.strptime(date_text, "%B %d, %Y"):
-                if five_days_ago.date() <= review_date.date() <= today.date():
-                    low_rated_reviews.append(f"{stars} stars - {title} (Date: {date_text})")
+        
+            title_element = review.select_one('[data-hook="review-title"] span')
+            title = title_element.text.strip() if title_element else "No title"
+        
+            all_reviews.append({
+                'stars': stars,
+                'title': title,
+                'date': date_text
+            })
+        
+            if stars <= 3 and stars != -1:
+                try:
+                    review_date = datetime.strptime(date_text, "%B %d, %Y")
+                    if five_days_ago.date() <= review_date.date() <= today.date():
+                        low_rated_reviews.append({
+                            'stars': stars,
+                            'title': title,
+                            'date': date_text
+                        })
+            except ValueError:
+                # If date parsing fails, include debugging info
+                raw_html_snippets.append(f"Failed parsing date: {date_text} - HTML: {str(review)[:500]}")
 
             # Capture only first 3 raw snippets
             if len(raw_html_snippets) < 3:
