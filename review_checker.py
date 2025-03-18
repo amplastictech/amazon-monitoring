@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options  # Changed to Firefox
+from selenium.webdriver.firefox.options import Options
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
@@ -30,51 +30,68 @@ def check_reviews():
 
     # Set up Selenium with Firefox
     options = Options()
-    options.add_argument("--headless")  # Run without opening a browser window
+    options.add_argument("--headless")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0")
-    driver = webdriver.Firefox(options=options)  # No need for explicit service path with pre-installed Geckodriver
+    driver = webdriver.Firefox(options=options)
 
     try:
         driver.get(URL)
-        time.sleep(3)  # Wait for reviews to load (adjust if needed)
+        time.sleep(3)  # Wait for reviews to load
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
         today = datetime.now()
         five_days_ago = today - timedelta(days=5)
-        reviews = soup.find_all('li', {'data-hook': 'review'})  # Matches your HTML structure
+        reviews = soup.find_all('li', {'data-hook': 'review'})
         
+        all_reviews = []
         low_rated_reviews = []
+        
+        # Collect all reviews
         for review in reviews:
             star_element = review.find('i', {'data-hook': 'review-star-rating'})
-            if not star_element:
-                continue
-            stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text  # e.g., "3.0 out of 5 stars"
-            stars = float(stars_text.split()[0])
+            stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text if star_element else "Unknown stars"
+            stars = float(stars_text.split()[0]) if stars_text != "Unknown stars" else -1
 
-            if stars <= 3:
-                date_element = review.find('span', {'data-hook': 'review-date'})
-                if not date_element:
-                    continue
-                date_text = date_element.text.replace("Reviewed in the United States on ", "")
-                review_date = datetime.strptime(date_text, "%B %d, %Y")
+            date_element = review.find('span', {'data-hook': 'review-date'})
+            date_text = date_element.text.replace("Reviewed in the United States on ", "") if date_element else "Unknown date"
+            review_date = datetime.strptime(date_text, "%B %d, %Y") if date_text != "Unknown date" else None
 
-                if review_date.date() >= five_days_ago.date():
-                    title_element = review.find('a', {'data-hook': 'review-title'})
-                    title = title_element.find('span', recursive=False).text if title_element else "No title"
-                    low_rated_reviews.append({
-                        'stars': stars,
-                        'title': title,
-                        'date': date_text
-                    })
+            title_element = review.find('a', {'data-hook': 'review-title'})
+            title = title_element.find('span', recursive=False).text if title_element else "No title"
 
+            # Add to all reviews list
+            all_reviews.append({
+                'stars': stars,
+                'title': title,
+                'date': date_text
+            })
+
+            # Check for low-rated reviews within 5 days
+            if stars <= 3 and stars != -1 and review_date and review_date.date() >= five_days_ago.date():
+                low_rated_reviews.append({
+                    'stars': stars,
+                    'title': title,
+                    'date': date_text
+                })
+
+        # Prepare email body with all reviews
+        email_body = "All reviews found on the page:\n\n"
+        for review in all_reviews:
+            email_body += f"{review['stars']} stars - {review['title']}\n"
+            email_body += f"Date: {review['date']}\n\n"
+
+        # Add low-rated reviews (if any)
         if low_rated_reviews:
-            email_body = "Low-rated reviews found:\n\n"
+            email_body += "Low-rated reviews (1, 2, or 3 stars) within the past 5 days:\n\n"
             for review in low_rated_reviews:
                 email_body += f"{review['stars']} stars - {review['title']}\n"
                 email_body += f"Date: {review['date']}\n\n"
-            send_email("Low Amazon Reviews Detected", email_body)
         else:
-            send_email("No Low Reviews", "No 1, 2, or 3-star reviews found in the past 5 days.")
+            email_body += "No 1, 2, or 3-star reviews found in the past 5 days.\n"
+
+        email_body += f"Debug info: Today = {today.date()}, Five days ago = {five_days_ago.date()}"
+
+        send_email("Amazon Review Check Results", email_body)
 
     except Exception as e:
         send_email("Review Checker Error", f"Error checking reviews: {str(e)}")
