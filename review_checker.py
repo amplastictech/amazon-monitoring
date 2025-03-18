@@ -32,7 +32,8 @@ def check_reviews():
 
     # Set up Selenium
     options = Options()
-    options.add_argument("--headless")  # Run without opening a browser window
+    options.binary_location = "/usr/lib/chromium-browser/chromium"  # Path to pre-installed Chromium
+    options.add_argument("--headless")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36")
     driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
 
