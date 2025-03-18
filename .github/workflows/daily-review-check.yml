@@ -2,20 +2,21 @@ name: Amazon Review Checker
 on:
   schedule:
     - cron: '0 * * * *'  # Runs hourly (adjust as needed)
-  workflow_dispatch:
+  workflow_dispatch:     # Allows manual triggering
 
 jobs:
   check-reviews:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Cache Python Dependencies
+      - name: Cache Python dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -33,28 +34,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-firefox-geckodriver-
 
-      - name: Install Dependencies
+      - name: Install system dependencies
         run: |
-          set -ex
-          python -m pip install --upgrade pip selenium beautifulsoup4
-          sudo apt update
-          sudo snap remove firefox || true
-          sudo snap remove geckodriver || true
-          sudo apt-get purge firefox -y || true
-          sudo rm -f /snap/bin/geckodriver
-          sudo apt install -y wget curl xvfb jq libgtk-3-0 libxtst6 libx11-xcb1 libdbus-glib-1-2
-      
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0 libxtst6 libx11-xcb1 libdbus-glib-1-2
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip uninstall selenium -y || true  # Remove any existing Selenium
+          pip install selenium --no-cache-dir --force-reinstall
+          pip install beautifulsoup4
+
+      - name: Install Firefox
+        run: |
           if [ ! -d "/opt/firefox" ]; then
-            wget -O firefox.tar.xz "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US"
-            sudo tar -xJf firefox.tar.xz -C /opt/
+            wget -O firefox.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US"
+            sudo mkdir -p /opt/firefox
+            sudo tar -xjf firefox.tar.bz2 -C /opt/firefox --strip-components=1
+            rm firefox.tar.bz2
           fi
           sudo ln -sf /opt/firefox/firefox /usr/bin/firefox
-      
+
+      - name: Install Geckodriver
+        run: |
           if [ ! -f "/usr/local/bin/geckodriver" ]; then
             GECKODRIVER_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | jq -r '.tag_name')
             wget -O geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/${GECKODRIVER_VERSION}/geckodriver-${GECKODRIVER_VERSION}-linux64.tar.gz"
             sudo tar -xzf geckodriver.tar.gz -C /usr/local/bin/
             sudo chmod +x /usr/local/bin/geckodriver
+            rm geckodriver.tar.gz
           fi
 
       - name: Run Python script
@@ -62,8 +71,8 @@ jobs:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          DISPLAY: :99
         run: |
           Xvfb :99 -screen 0 1024x768x24 &
-          export DISPLAY=:99
-          sleep 3
+          sleep 3  # Give Xvfb time to start
           python review_checker.py
