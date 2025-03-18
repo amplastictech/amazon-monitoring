@@ -7,9 +7,6 @@ import time
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
-EMAIL_SENDER = "your_email@gmail.com"  # Replace with your email
-EMAIL_PASSWORD = "your_app_password"   # Replace with your app-specific password
-EMAIL_RECEIVER = "receiver_email@example.com"  # Replace with receiver email
 SMTP_SERVER = "smtp.gmail.com"  # For Gmail; change if using different provider
 SMTP_PORT = 587
 
