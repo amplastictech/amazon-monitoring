@@ -40,10 +40,13 @@ def check_reviews():
 
     try:
         debug_info = [f"Selenium version: {selenium.__version__}"]
+        debug_info.append(f"Attempting to load URL: {URL}")
         driver.get(URL)
-        time.sleep(random.uniform(3, 6))  # Initial wait
+        time.sleep(random.uniform(5, 8))  # Longer initial wait
+        debug_info.append(f"Loaded URL: {driver.current_url}")
+        debug_info.append(f"Initial title: {driver.title}")
 
-        max_attempts = 2
+        max_attempts = 3  # More attempts
         for attempt in range(max_attempts):
             try:
                 debug_info.append(f"Attempt {attempt + 1}: Waiting for reviews...")
@@ -65,7 +68,7 @@ def check_reviews():
             f.write(page_source)
         debug_info.append(f"Page source length: {len(page_source)}")
         debug_info.append(f"Page source snippet: {page_source[:500]}")
-        debug_info.append(f"Title: {driver.title}")
+        debug_info.append(f"Final title: {driver.title}")
 
         soup = BeautifulSoup(page_source, 'html.parser')
         today = datetime.now()
