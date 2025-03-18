@@ -1,12 +1,10 @@
-import requests
+import requests  # Kept for potential future use, though not currently needed
 from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import time
 import os
-from email.mime.text import MIMEText
-from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
