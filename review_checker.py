@@ -6,6 +6,9 @@ import time
 import os
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
@@ -34,28 +37,47 @@ def check_reviews():
 
     try:
         driver.get(URL)
-        time.sleep(3)
+        # Wait for at least one review to load (up to 10 seconds)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review'], .review"))
+        )
+        # Scroll to load more reviews (optional)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)  # Give extra time for lazy-loaded content
 
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        # Get page source after waiting
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
 
         today = datetime.now()
         five_days_ago = today - timedelta(days=5)
 
+        # Try original selector first, then fallback
         reviews = soup.find_all('div', {'data-hook': 'review'})
+        if not reviews:
+            reviews = soup.find_all('div', class_='review')  # Fallback selector
 
         all_reviews_info = []
         low_rated_reviews = []
         raw_html_snippets = []
 
+        # Debugging: Log if no reviews found
+        if not reviews:
+            raw_html_snippets.append(f"No reviews found with data-hook='review' or class='review'. Page source length: {len(page_source)}")
+            raw_html_snippets.append(f"First 500 chars of page source: {page_source[:500]}")
+
         for review in reviews:
-            star_element = review.select_one('[data-hook="review-star-rating"]')
+            # Stars
+            star_element = review.select_one('[data-hook="review-star-rating"]') or review.select_one('.review-rating')
             stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text if star_element else "Unknown stars"
             stars = float(stars_text.split()[0]) if stars_text != "Unknown stars" else -1
         
-            date_element = review.select_one('span[data-hook="review-date"]')
+            # Date
+            date_element = review.select_one('span[data-hook="review-date"]') or review.select_one('.review-date')
             date_text = date_element.text.replace("Reviewed in the United States on ", "").strip() if date_element else "Unknown date"
         
-            title_element = review.select_one('[data-hook="review-title"] span')
+            # Title
+            title_element = review.select_one('[data-hook="review-title"] span') or review.select_one('.review-title')
             title = title_element.text.strip() if title_element else "No title"
         
             all_reviews_info.append({
@@ -77,11 +99,11 @@ def check_reviews():
                     raw_html_snippets.append(f"Failed parsing date: {date_text} - HTML: {str(review)[:500]}")
 
             if len(raw_html_snippets) < 3:
-                raw_html_snippets.append(str(review))
+                raw_html_snippets.append(str(review)[:500])  # Limit length for readability
 
         # Format email body
         email_body = "All reviews found on the page:\n\n"
-        email_body += "\n".join([f"Stars: {r['stars']}, Title: {r['title']}, Date: {r['date']}" for r in all_reviews_info])
+        email_body += "\n".join([f"Stars: {r['stars']}, Title: {r['title']}, Date: {r['date']}" for r in all_reviews_info]) or "No reviews parsed."
         email_body += "\n\n"
 
         if low_rated_reviews:
@@ -91,7 +113,8 @@ def check_reviews():
             email_body += "No 1, 2, or 3-star reviews found in the past 5 days.\n"
 
         email_body += f"\n\nDebug info: Today = {today.date()}, Five days ago = {five_days_ago.date()}\n"
-        email_body += "\n\n--- Raw HTML snippets (first 3 reviews): ---\n\n"
+        email_body += f"Number of reviews found: {len(reviews)}\n"
+        email_body += "\n\n--- Raw HTML snippets (first 3 reviews or debug info): ---\n\n"
         email_body += "\n\n".join(raw_html_snippets[:3])
 
         send_email("Amazon Review Check Results with Debug HTML", email_body)
