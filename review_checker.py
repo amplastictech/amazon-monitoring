@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import time
+import os
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
