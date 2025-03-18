@@ -1,13 +1,11 @@
-import requests  # Kept for potential future use, though not currently needed
-from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 import time
 import os
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options  # Changed to Firefox
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
@@ -20,22 +18,21 @@ SMTP_PORT = 587
 def send_email(subject, body):
     msg = MIMEText(body)
     msg['Subject'] = subject
-    msg['From'] = EMAIL_SENDER  # Changed from EMAIL_ADDRESS
-    msg['To'] = EMAIL_RECEIVER  # Changed from RECIPIENT
+    msg['From'] = EMAIL_SENDER
+    msg['To'] = EMAIL_RECEIVER
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
         server.starttls()
-        server.login(EMAIL_SENDER, EMAIL_PASSWORD)  # Changed from EMAIL_ADDRESS
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.send_message(msg)
 
 def check_reviews():
     send_email("Review Checker Test", f"Script started running at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Set up Selenium
+    # Set up Selenium with Firefox
     options = Options()
-    options.binary_location = "/usr/lib/chromium-browser/chromium"  # Path to pre-installed Chromium
-    options.add_argument("--headless")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36")
-    driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+    options.add_argument("--headless")  # Run without opening a browser window
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0")
+    driver = webdriver.Firefox(options=options)  # No need for explicit service path with pre-installed Geckodriver
 
     try:
         driver.get(URL)
@@ -44,14 +41,14 @@ def check_reviews():
 
         today = datetime.now()
         five_days_ago = today - timedelta(days=5)
-        reviews = soup.find_all('li', {'data-hook': 'review'})  # Updated to match your HTML
+        reviews = soup.find_all('li', {'data-hook': 'review'})  # Matches your HTML structure
         
         low_rated_reviews = []
         for review in reviews:
             star_element = review.find('i', {'data-hook': 'review-star-rating'})
             if not star_element:
                 continue
-            stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text  # "3.0 out of 5 stars"
+            stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text  # e.g., "3.0 out of 5 stars"
             stars = float(stars_text.split()[0])
 
             if stars <= 3:
