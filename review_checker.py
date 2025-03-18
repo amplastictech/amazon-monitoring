@@ -26,12 +26,16 @@ def send_email(subject, body):
             server.starttls()
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
-        print("Email sent successfully")
+        print("Email sent successfully: " + subject)
     except Exception as e:
         print(f"Error sending email: {e}")
+        raise  # Raise the exception to ensure it’s visible in logs
 
 def check_reviews():
-    """Check Amazon reviews for low ratings from the past day"""
+    """Check Amazon reviews for low ratings from the past 5 days"""
+    # Send a test email to confirm email functionality
+    send_email("Review Checker Test", "Script started running at " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
@@ -41,16 +45,13 @@ def check_reviews():
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Get current date and yesterday's date
         today = datetime.now()
-        yesterday = today - timedelta(days=1)
+        five_days_ago = today - timedelta(days=5)
         
-        # Find all review elements
         reviews = soup.find_all('div', {'data-hook': 'review'})
         low_rated_reviews = []
 
         for review in reviews:
-            # Get star rating
             star_element = review.find('i', {'data-hook': 'review-star-rating'})
             if not star_element:
                 continue
@@ -61,9 +62,7 @@ def check_reviews():
                 
             stars = float(stars_text.text.split()[0])
             
-            # Check if rating is 1, 2, or 3 stars
             if stars <= 3:
-                # Get review date
                 date_element = review.find('span', {'data-hook': 'review-date'})
                 if not date_element:
                     continue
@@ -72,8 +71,6 @@ def check_reviews():
                 review_date_str = date_text.replace("Reviewed in the United States on ", "")
                 review_date = datetime.strptime(review_date_str, "%B %d, %Y")
                 
-                # Check if review is from the past 5 days
-                five_days_ago = today - timedelta(days=5)
                 if review_date.date() >= five_days_ago.date():
                     title = review.find('a', {'data-hook': 'review-title'})
                     title_text = title.find('span', recursive=False).text if title else "No title"
@@ -83,13 +80,14 @@ def check_reviews():
                         'date': date_text
                     })
 
-        # Send email if low-rated reviews found
         if low_rated_reviews:
             email_body = "Low-rated reviews found:\n\n"
             for review in low_rated_reviews:
                 email_body += f"{review['stars']} stars - {review['title']}\n"
                 email_body += f"Date: {review['date']}\n\n"
             send_email("Low Amazon Reviews Detected", email_body)
+        else:
+            send_email("No Low Reviews", "No 1, 2, or 3-star reviews found in the past 5 days.")
 
     except Exception as e:
         error_msg = f"Error checking reviews: {e}"
