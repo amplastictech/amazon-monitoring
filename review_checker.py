@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import time
 import os
+import random
 import selenium
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -34,12 +35,13 @@ def check_reviews():
     os.environ["DISPLAY"] = ":99"
     options = Options()
     options.add_argument("--headless")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0")  # Updated UA
     driver = webdriver.Firefox(options=options)
 
     try:
         debug_info = [f"Selenium version: {selenium.__version__}"]
         driver.get(URL)
+        time.sleep(random.uniform(2, 5))  # Random delay
 
         max_attempts = 2
         for attempt in range(max_attempts):
@@ -49,7 +51,7 @@ def check_reviews():
                     EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review'], .review"))
                 )
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(3)
+                time.sleep(random.uniform(2, 4))
                 debug_info.append("Reviews found after wait.")
                 break
             except Exception as e:
