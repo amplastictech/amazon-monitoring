@@ -35,23 +35,23 @@ def check_reviews():
     os.environ["DISPLAY"] = ":99"
     options = Options()
     options.add_argument("--headless")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0")  # Updated UA
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0")
     driver = webdriver.Firefox(options=options)
 
     try:
         debug_info = [f"Selenium version: {selenium.__version__}"]
         driver.get(URL)
-        time.sleep(random.uniform(2, 5))  # Random delay
+        time.sleep(random.uniform(3, 6))  # Initial wait
 
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
                 debug_info.append(f"Attempt {attempt + 1}: Waiting for reviews...")
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review'], .review"))
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review'], .review, .a-section.review"))
                 )
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(random.uniform(2, 4))
+                time.sleep(random.uniform(3, 5))
                 debug_info.append("Reviews found after wait.")
                 break
             except Exception as e:
@@ -65,12 +65,15 @@ def check_reviews():
             f.write(page_source)
         debug_info.append(f"Page source length: {len(page_source)}")
         debug_info.append(f"Page source snippet: {page_source[:500]}")
+        debug_info.append(f"Title: {driver.title}")
 
         soup = BeautifulSoup(page_source, 'html.parser')
         today = datetime.now()
         five_days_ago = today - timedelta(days=5)
 
-        reviews = soup.find_all('div', {'data-hook': 'review'}) or soup.find_all('div', class_='review') or soup.find_all('div', class_='a-section review')
+        reviews = (soup.find_all('div', {'data-hook': 'review'}) or 
+                   soup.find_all('div', class_='review') or 
+                   soup.find_all('div', class_='a-section review'))
 
         all_reviews_info = []
         low_rated_reviews = []
@@ -80,14 +83,14 @@ def check_reviews():
             debug_info.append("No reviews found with any selector.")
 
         for review in reviews:
-            star_element = review.select_one('[data-hook="review-star-rating"]') or review.select_one('.review-rating')
+            star_element = review.select_one('[data-hook="review-star-rating"], .review-rating, .a-icon-star')
             stars_text = star_element.find('span', {'class': 'a-icon-alt'}).text if star_element else "Unknown stars"
             stars = float(stars_text.split()[0]) if stars_text != "Unknown stars" else -1
 
-            date_element = review.select_one('span[data-hook="review-date"]') or review.select_one('.review-date')
+            date_element = review.select_one('span[data-hook="review-date"], .review-date')
             date_text = date_element.text.replace("Reviewed in the United States on ", "").strip() if date_element else "Unknown date"
 
-            title_element = review.select_one('[data-hook="review-title"] span') or review.select_one('.review-title')
+            title_element = review.select_one('[data-hook="review-title"] span, .review-title')
             title = title_element.text.strip() if title_element else "No title"
 
             all_reviews_info.append({
