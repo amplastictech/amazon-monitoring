@@ -24,18 +24,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests beautifulsoup4 selenium
 
-    - name: Install Chromium and ChromeDriver
+    - name: Install ChromeDriver
       run: |
-       sudo apt-get update
-       # Install Chromium without Snap
-       sudo apt-get install -y chromium-browser
-       # Install ChromeDriver separately
-       sudo apt-get install -y chromium-chromedriver
-       # Verify installation
-       chromium-browser --version
-       chromedriver --version
-       # Link ChromeDriver to a known path
-       sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+          sudo apt-get update
+          sudo apt-get install -y chromium-chromedriver
+          sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+          # Use pre-installed Chromium
+          chromium --version || echo "Chromium already installed"
+          chromedriver --version
         
     - name: Run review checker
       env:
