@@ -1,13 +1,19 @@
-from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
+from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-import os
 
+# Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
 
 def send_email(subject, body):
     msg = MIMEText(body)
