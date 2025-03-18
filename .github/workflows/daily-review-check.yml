@@ -66,6 +66,11 @@ jobs:
             rm geckodriver.tar.gz
           fi
 
+      - name: Verify Selenium Installation
+        run: |
+          python -c "import selenium; print(f'Selenium version: {selenium.__version__}')"
+          python -c "import selenium.common.exceptions; print('Exceptions module exists')" || echo "Exceptions import failed"
+
       - name: Run Python script
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
@@ -76,3 +81,10 @@ jobs:
           Xvfb :99 -screen 0 1024x768x24 &
           sleep 3
           python review_checker.py
+
+      - name: Upload Page Source
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: page-source
+          path: page_source.html
