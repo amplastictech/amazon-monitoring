@@ -4,11 +4,17 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import time
 import os
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import selenium
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.firefox.options import Options
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.common.exceptions import NoSuchElementError, TimeoutException
+except ImportError as e:
+    raise ImportError(f"Failed to import Selenium components: {str(e)}. Please reinstall Selenium with 'pip install --upgrade selenium'.")
 
 # Configuration
 URL = "https://www.amazon.com/product-reviews/B082QM1ZJN/ref=cm_cr_arp_d_viewopt_srt?ie=UTF8&reviewerType=all_reviews&sortBy=recent&pageNumber=1"
@@ -30,16 +36,16 @@ def send_email(subject, body):
         server.send_message(msg)
 
 def check_reviews():
+    os.environ["DISPLAY"] = ":99"  # For Xvfb
     options = Options()
     options.add_argument("--headless")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0")
     driver = webdriver.Firefox(options=options)
 
     try:
+        debug_info = [f"Selenium version: {selenium.__version__}"]
         driver.get(URL)
-        debug_info = []
 
-        # Attempt to wait for reviews with retry
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
@@ -48,19 +54,18 @@ def check_reviews():
                     EC.presence_of_element_located((By.CSS_SELECTOR, "[data-hook='review'], .review"))
                 )
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(3)  # Extra time for lazy loading
+                time.sleep(3)
                 debug_info.append("Reviews found after wait.")
                 break
             except (NoSuchElementError, TimeoutException) as e:
                 debug_info.append(f"Failed attempt {attempt + 1}: {str(e)}")
                 if attempt == max_attempts - 1:
                     debug_info.append("All attempts failed. Capturing page source anyway.")
-                time.sleep(5)  # Wait before retry
+                time.sleep(5)
 
-        # Get page source regardless of success
         page_source = driver.page_source
         with open("page_source.html", "w", encoding="utf-8") as f:
-            f.write(page_source)  # Save for manual inspection
+            f.write(page_source)
         debug_info.append(f"Page source length: {len(page_source)}")
         debug_info.append(f"Page source snippet: {page_source[:500]}")
 
@@ -68,12 +73,7 @@ def check_reviews():
         today = datetime.now()
         five_days_ago = today - timedelta(days=5)
 
-        # Try multiple selectors
-        reviews = soup.find_all('div', {'data-hook': 'review'})
-        if not reviews:
-            reviews = soup.find_all('div', class_='review')
-        if not reviews:
-            reviews = soup.find_all('div', class_='a-section review')  # Another common Amazon class
+        reviews = soup.find_all('div', {'data-hook': 'review'}) or soup.find_all('div', class_='review') or soup.find_all('div', class_='a-section review')
 
         all_reviews_info = []
         low_rated_reviews = []
@@ -114,7 +114,6 @@ def check_reviews():
             if len(raw_html_snippets) < 3:
                 raw_html_snippets.append(str(review)[:500])
 
-        # Format email body
         email_body = "All reviews found on the page:\n\n"
         email_body += "\n".join([f"Stars: {r['stars']}, Title: {r['title']}, Date: {r['date']}" for r in all_reviews_info]) or "No reviews parsed."
         email_body += "\n\n"
