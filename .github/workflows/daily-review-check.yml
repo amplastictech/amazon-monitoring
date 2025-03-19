@@ -1,7 +1,7 @@
 name: Amazon Review Checker
 on:
-  schedule:
-    - cron: '0 * * * *'  # Runs hourly
+#  schedule:
+#    - cron: '0 * * * *'  # Runs hourly
   workflow_dispatch:
 
 jobs:
